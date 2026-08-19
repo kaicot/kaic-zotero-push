@@ -1,0 +1,10 @@
+interface:
+  display_name: "KAIC Zotero Push"
+  short_description: "Preview and safely import document references into Zotero."
+  default_prompt: >
+    Use kaic-zotero-push to inspect the provided reference document, show a no-write preview,
+    wait for explicit approval, then create and verify only new metadata-only items in the
+    user's Zotero personal library.
+
+policy:
+  allow_implicit_invocation: true
