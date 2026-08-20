@@ -11,5 +11,31 @@ build/
 *.egg-info/
 .runs/
 .env
+.env.*
 *.log
 .omo/
+
+# Public repository hygiene: keep only intentional root documentation.
+/*.md
+!/README.md
+!/SKILL.md
+!/CHANGELOG.md
+
+# Local source documents and private working material.
+/*.docx
+/*.pdf
+/*.xlsx
+/*.csv
+/*.hwp
+/*.hwpx
+/.private/
+/private/
+
+# Credentials and local data stores.
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+*.sqlite
+*.db
