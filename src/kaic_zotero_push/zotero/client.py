@@ -51,7 +51,7 @@ class ZoteroClient:
             "Zotero-API-Key": api_key,
             "Zotero-API-Version": "3",
             "Content-Type": "application/json",
-            "User-Agent": "kaic-zotero-push/0.1.0",
+            "User-Agent": "kaic-zotero-push/0.1.1",
         }
         if transport is not None:
             self._read_client = httpx2.Client(

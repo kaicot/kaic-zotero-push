@@ -18,6 +18,7 @@ from kaic_zotero_push.pipeline import (
     commit_run,
     prepare_run,
 )
+from kaic_zotero_push.prompts import read_api_key
 from kaic_zotero_push.runs import read_model, write_model
 from kaic_zotero_push.zotero.client import ZoteroClient
 
@@ -40,20 +41,9 @@ error_console = Console(stderr=True, markup=False)
 
 
 @app.command()
-def configure(
-    api_key: Annotated[
-        str | None,
-        typer.Option(
-            "--api-key",
-            prompt="Zotero API key",
-            hide_input=True,
-            help="Prompted securely; omitting the option is recommended.",
-        ),
-    ] = None,
-) -> None:
+def configure() -> None:
     """Validate and store a Zotero API key in Windows Credential Manager."""
-    if not api_key:
-        raise typer.Exit(code=2)
+    api_key = read_api_key()
     try:
         with ZoteroClient(api_key=api_key) as client:
             access = client.current_key()

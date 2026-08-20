@@ -554,7 +554,7 @@ wheels = [
 
 [[package]]
 name = "kaic-zotero-push"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx2", extra = ["brotli", "http2", "zstd"] },

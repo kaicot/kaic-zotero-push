@@ -61,9 +61,13 @@ uv run kaic-zotero-push --help
 uv run kaic-zotero-push configure
 ```
 
+API 키를 입력하거나 붙여넣는 동안에는 보안을 위해 글자나 별표가 화면에 표시되지
+않습니다. 그대로 키를 입력한 뒤 `Enter`를 누르세요. PowerShell에서 `Ctrl+V`가
+동작하지 않으면 마우스 오른쪽 버튼 또는 `Shift+Insert`로 붙여넣을 수 있습니다.
+입력이 완료되면 "API 키와 권한을 확인하는 중"이라는 메시지가 표시됩니다.
+
 명령은 먼저 `GET /keys/current`로 계정과 권한을 확인한 뒤 Windows Credential
-Manager에 저장합니다. 키 자체는 출력하지 않습니다. 보안을 위해 `--api-key` 값을
-명령줄에 직접 적지 마세요.
+Manager에 저장합니다. 키 자체는 출력하지 않으며 명령줄 인자로도 받지 않습니다.
 
 ## 에이전트 자연어 사용법
 
