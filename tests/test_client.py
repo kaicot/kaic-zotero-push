@@ -1,5 +1,7 @@
 import httpx2
+from pydantic import TypeAdapter
 
+from kaic_zotero_push.models import JsonValue
 from kaic_zotero_push.zotero.client import ZoteroClient
 from kaic_zotero_push.zotero.models import ZoteroItemPayload
 
@@ -60,3 +62,32 @@ def test_create_items_when_write_token_is_provided() -> None:
 
     # Then
     assert response.root["successful"] == {"0": {"key": "ITEM1", "version": 1}}
+
+
+def test_create_collection_when_name_is_approved_posts_root_collection() -> None:
+    # Given
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/users/123/collections"
+        assert request.headers["Zotero-Write-Token"] == "b" * 32
+        payload = TypeAdapter(list[dict[str, JsonValue]]).validate_json(request.content)
+        assert payload == [{"name": "New Collection", "parentCollection": False}]
+        return httpx2.Response(200, json={"success": {"0": "NEWCOLL"}})
+
+    transport = httpx2.MockTransport(handler)
+
+    # When
+    with ZoteroClient(
+        api_key="test-secret",
+        base_url="https://api.zotero.test",
+        transport=transport,
+    ) as client:
+        collection = client.create_collection(
+            user_id=123,
+            name="New Collection",
+            write_token="b" * 32,
+        )
+
+    # Then
+    assert collection.key == "NEWCOLL"
+    assert collection.name == "New Collection"

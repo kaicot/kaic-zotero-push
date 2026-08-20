@@ -33,7 +33,7 @@ Accept:
 - text-based `.pdf`
 
 Reject encrypted, damaged, unsupported, or non-text-extractable inputs. Scanned PDFs, images,
-`.hwp`, `.hwpx`, and OCR are outside v0.1.
+`.hwp`, `.hwpx`, and OCR are outside v0.2.
 
 ## Setup
 
@@ -80,6 +80,8 @@ Read the generated `preview.md` and report:
 - parse failures;
 - personal-library collection or root;
 - representative planned items;
+- missing metadata warning codes;
+- whether the exact named collection will be created after approval;
 - run directory.
 
 Say explicitly that Zotero has not been changed.
@@ -94,7 +96,7 @@ Approval is bound to:
 - the input SHA-256;
 - the complete manifest SHA-256;
 - the Zotero personal user ID;
-- the collection key or library root.
+- the existing collection key, library root, or exact missing-collection creation intent.
 
 After the user approves the displayed preview, and only then:
 
@@ -114,7 +116,9 @@ uv run kaic-zotero-push commit ".runs\<run-id>"
 The command rechecks key ownership and write access, refreshes remote duplicates, validates
 payloads against live Zotero item templates, writes no more than 50 items per request, persists
 one stable write token per batch, handles item-level partial failures, and fetches successful
-item keys for verification.
+item keys for verification. If the preview bound an exact missing collection name, `commit`
+creates that root collection only after approval, persists its returned key, and then uses the
+same key for every item and read-back check.
 
 Report receipt states exactly:
 
@@ -144,11 +148,25 @@ and retries only eligible failures. Never delete successful items to simulate ro
 - Resolve an exact unique collection name.
 - If a name is ambiguous, report the candidate keys and ask the user to choose.
 - If no collection is given, use the personal-library root.
-- Do not silently create a missing collection in v0.1.
-- Bind approval and writes to the collection key, never only the display name.
+- If the exact name is missing, show `새 컬렉션 생성 예정` in the preview.
+- Create a missing root collection only after the user approves that exact preview.
+- Persist and reuse the created collection key during resume; never create it twice.
+- Bind approval to the existing key or exact create-if-missing name, never an unapproved
+  destination.
+
+## Parsing quality gate
+
+- Use structured fields first, then MDPI/Vancouver, then APA, then conservative fallback.
+- For DOCX, automatically create items only from a confirmed `References`, `Bibliography`, or
+  `참고문헌` section. Unbounded DOCX candidates require review.
+- A journal article is eligible only when it has a separated title, at least one creator,
+  a date or DOI, and a publication title; DOI text must not remain in the title.
+- Preserve journal abbreviations, initials, volume, issue, page range or article number exactly
+  as provided. Never expand or enrich them through external search.
+- Preserve structured and clearly formatted institution-authored reports as `report`.
 
 ## Scope limits
 
 Decline requests to update, merge, or delete existing Zotero items; upload files; use group
-libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.1 and do not attempt
+libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2 and do not attempt
 an improvised workaround.

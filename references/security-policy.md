@@ -8,7 +8,7 @@
   artifacts, or chat messages.
 - Send the key only as the `Zotero-API-Key` request header.
 - Use a dedicated key limited to personal-library read/write access. File and group permissions
-  are unnecessary for v0.1.
+  are unnecessary for v0.2.
 
 ## Documents and metadata
 
@@ -16,13 +16,15 @@
 - Never copy the original document into `.runs`.
 - Never upload the document, article PDFs, or attachments to Zotero.
 - Run artifacts can contain citation text. Keep `.runs/` private and out of Git.
-- v0.1 performs no title-search enrichment and sends no source document to an external metadata
+- v0.2 performs no title-search enrichment and sends no source document to an external metadata
   service.
 
 ## Approval boundary
 
-The approval hash binds the exact input bytes, manifest, personal user ID, and collection key.
-Any change invalidates approval. Do not manually edit run artifacts to bypass this check.
+The approval hash binds the exact input bytes, manifest, personal user ID, and existing collection
+key or exact missing-collection creation name. Any change invalidates approval. A missing
+collection is created only after approval, and its resolved key is kept in a separate durable
+state file. Do not manually edit run artifacts to bypass this check.
 
 ## Incident handling
 

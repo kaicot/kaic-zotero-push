@@ -6,8 +6,13 @@ import re
 import unicodedata
 from typing import Final
 
+from kaic_zotero_push.citation_parsers import (
+    parse_apa,
+    parse_creators,
+    parse_mdpi_vancouver,
+    parse_report,
+)
 from kaic_zotero_push.models import (
-    Creator,
     Decision,
     ParsedReference,
     ParseStatus,
@@ -19,11 +24,10 @@ from kaic_zotero_push.models import (
 
 _DOI_PATTERN = re.compile(r"10\.\d{4,9}/[-._;()/:a-z0-9]+", re.IGNORECASE)
 _URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
-_APA_PATTERN = re.compile(r"^(?P<authors>.+?)\s*\((?P<year>(?:19|20)\d{2})\)\.?\s*(?P<body>.+)$")
 _NUMBER_PREFIX = re.compile(r"^\s*(?:\[\d+\]|\d+[.)])\s*")
+_DOI_LABEL = re.compile(r"\bdoi\s*:\s*", re.IGNORECASE)
 _PUNCTUATION = re.compile(r"[^\w\s]", re.UNICODE)
 _SPACES = re.compile(r"\s+")
-_NAME_PART_COUNT: Final = 2
 _PARSED_THRESHOLD: Final = 0.8
 
 
@@ -42,22 +46,6 @@ def normalize_title(raw: str) -> str:
     normalized = unicodedata.normalize("NFKC", raw).casefold()
     normalized = normalized.replace("\u2014", " ").replace("\u2013", " ")
     return _SPACES.sub(" ", _PUNCTUATION.sub(" ", normalized)).strip()
-
-
-def _parse_creators(raw: str | None) -> list[Creator]:
-    if raw is None or not raw.strip():
-        return []
-    creators: list[Creator] = []
-    for segment in re.split(r"\s*(?:&|;|\band\b)\s*", raw.strip().rstrip(".")):
-        cleaned = segment.strip(" ,")
-        if not cleaned:
-            continue
-        parts = [part.strip() for part in cleaned.split(",", maxsplit=1)]
-        if len(parts) == _NAME_PART_COUNT:
-            creators.append(Creator(last_name=parts[0], first_name=parts[1].strip(" .")))
-        else:
-            creators.append(Creator(name=cleaned))
-    return creators
 
 
 def _item_type(text: str, explicit: str | None = None) -> str:
@@ -83,7 +71,7 @@ def _from_structured(structured: StructuredReference) -> ParsedReference:
     return ParsedReference(
         item_type=_item_type(structured.title or "", structured.item_type),
         title=(structured.title or "").strip(),
-        creators=_parse_creators(structured.author),
+        creators=parse_creators(structured.author),
         date=structured.year,
         container_title=structured.container_title,
         volume=structured.volume,
@@ -102,12 +90,66 @@ def _extract_url(raw: str) -> str | None:
     return match.group(0).rstrip(".,") if match is not None else None
 
 
+def _without_identifiers(raw: str) -> str:
+    without_urls = _URL_PATTERN.sub("", raw)
+    without_doi = _DOI_PATTERN.sub("", without_urls)
+    return _DOI_LABEL.sub("", without_doi).strip(" .")
+
+
+def _journal_warnings(
+    parsed: ParsedReference,
+    source: SourceCandidate,
+) -> list[str]:
+    warnings: list[str] = []
+    source_body = _without_identifiers(_NUMBER_PREFIX.sub("", source.raw_text))
+    if source.structured is None and normalize_title(parsed.title) == normalize_title(source_body):
+        warnings.append("unparsed_citation_title")
+    if not parsed.creators:
+        warnings.append("missing_creators")
+    if not (parsed.date or parsed.doi):
+        warnings.append("missing_year_or_identifier")
+    if not parsed.container_title:
+        warnings.append("missing_publication_title")
+    if parsed.doi and parsed.doi.casefold() in parsed.title.casefold():
+        warnings.append("doi_in_title")
+    return warnings
+
+
+def _report_warnings(parsed: ParsedReference) -> list[str]:
+    warnings: list[str] = []
+    if not parsed.creators:
+        warnings.append("missing_creators")
+    if not parsed.date:
+        warnings.append("missing_year")
+    if not parsed.publisher:
+        warnings.append("missing_publisher")
+    return warnings
+
+
+def _quality(parsed: ParsedReference, source: SourceCandidate) -> Quality:
+    is_journal = parsed.item_type == "journalArticle"
+    is_report = parsed.item_type == "report"
+    warnings = (
+        _journal_warnings(parsed, source)
+        if is_journal
+        else (_report_warnings(parsed) if is_report else [])
+    )
+    if not is_journal and not is_report and not parsed.title:
+        warnings.append("missing_title")
+    if not source.section_confirmed:
+        warnings.append("unconfirmed_reference_section")
+    confidence = 0.95 if not warnings else (0.6 if parsed.title else 0.2)
+    status = ParseStatus.PARSED if confidence >= _PARSED_THRESHOLD else ParseStatus.NEEDS_REVIEW
+    return Quality(parse_status=status, confidence=confidence, warnings=warnings)
+
+
 def parse_candidate(
     raw_text: str,
     *,
     source_index: int,
     source_locator: str,
     structured: StructuredReference | None = None,
+    section_confirmed: bool = True,
 ) -> ReferenceRecord:
     """Parse one candidate without inventing absent metadata."""
     source = SourceCandidate(
@@ -115,41 +157,34 @@ def parse_candidate(
         source_locator=source_locator,
         raw_text=raw_text.strip(),
         structured=structured,
+        section_confirmed=section_confirmed,
     )
     if structured is not None:
         parsed = _from_structured(structured)
     else:
         cleaned = _NUMBER_PREFIX.sub("", raw_text.strip())
-        match = _APA_PATTERN.match(cleaned)
-        if match is None:
-            title = _URL_PATTERN.sub("", cleaned).strip(" .")
-            parsed = ParsedReference(
-                item_type=_item_type(cleaned),
-                title=title,
-                doi=normalize_doi(cleaned),
-                url=_extract_url(cleaned),
+        doi = normalize_doi(cleaned)
+        url = _extract_url(cleaned)
+        citation = _without_identifiers(cleaned)
+        detected_type = _item_type(citation)
+        parsed = (
+            parse_mdpi_vancouver(citation, doi=doi, url=url)
+            or parse_apa(citation, doi=doi, url=url)
+            or (parse_report(citation, url=url) if detected_type == "report" else None)
+            or ParsedReference(
+                item_type=detected_type,
+                title=citation,
+                doi=doi,
+                url=url,
             )
-        else:
-            body = match.group("body")
-            segments = [segment.strip() for segment in body.split(".") if segment.strip()]
-            title = segments[0] if segments else ""
-            parsed = ParsedReference(
-                item_type=_item_type(cleaned),
-                title=title,
-                creators=_parse_creators(match.group("authors")),
-                date=match.group("year"),
-                container_title=segments[1] if len(segments) > 1 else None,
-                doi=normalize_doi(cleaned),
-                url=_extract_url(cleaned),
-            )
-    has_core_fields = bool(parsed.title and (parsed.date or parsed.doi))
-    confidence = 0.9 if has_core_fields else (0.6 if parsed.title else 0.2)
-    status = ParseStatus.PARSED if confidence >= _PARSED_THRESHOLD else ParseStatus.NEEDS_REVIEW
-    decision = Decision.CREATE if status is ParseStatus.PARSED else Decision.NEEDS_REVIEW
-    warnings = [] if has_core_fields else ["missing_year_or_identifier"]
+        )
+    quality = _quality(parsed, source)
+    decision = (
+        Decision.CREATE if quality.parse_status is ParseStatus.PARSED else Decision.NEEDS_REVIEW
+    )
     return ReferenceRecord(
         source=source,
         parsed=parsed,
-        quality=Quality(parse_status=status, confidence=confidence, warnings=warnings),
+        quality=quality,
         decision=decision,
     )

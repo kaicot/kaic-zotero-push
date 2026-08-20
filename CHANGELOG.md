@@ -2,6 +2,17 @@
 
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
 
+## [0.2.0] - 2026-08-20
+
+### 추가
+
+- DOCX 참고문헌 섹션 경계 탐지와 본문·표 후보 제외
+- MDPI/Vancouver 저자·제목·저널·연도·권호·페이지·논문번호 분리
+- 기관 보고서 파싱과 저널 자동등록 품질 게이트
+- 승인 후 누락된 루트 컬렉션 생성, key 내구 저장 및 안전 재개
+- 문자열 `success`와 객체 `successful` Zotero 응답 통합 처리
+- 27건 fixture 기반 파싱·중복·batch receipt 회귀 검증
+
 ## [0.1.1] - 2026-08-20
 
 ### 수정

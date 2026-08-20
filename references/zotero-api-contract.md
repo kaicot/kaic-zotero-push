@@ -17,6 +17,7 @@ The API key must never be a query parameter.
 |---|---|
 | Key and permission check | `GET /keys/current` |
 | Collections | `GET /users/<userID>/collections` |
+| Root collection creation | `POST /users/<userID>/collections` |
 | Existing top-level items | `GET /users/<userID>/items/top` |
 | Live item template | `GET /items/new?itemType=<type>` |
 | Batch item creation | `POST /users/<userID>/items` |
@@ -27,13 +28,26 @@ The API key must never be a query parameter.
 - Personal libraries only.
 - One request contains 1-50 objects.
 - One persisted 32-character `Zotero-Write-Token` is bound to each exact batch payload.
-- Both `success` and `successful` response maps are accepted.
+- String-valued `success` and object-valued `successful` response maps are accepted and
+  deduplicated by request index.
 - `failed` and unexpected `unchanged` entries are handled by request index.
-- A missing or duplicated response index is a protocol error.
+- Recognizable success keys are persisted before full normalization and reconciled by read-back.
+- Missing dispositions are failures for only those indices when other success keys are known.
 - Writes use no automatic transport retry.
 - A timeout or lost response is an unknown outcome, never success.
 - Every success key is fetched again. Only matching item type, normalized title, DOI when
   supplied, and collection placement yields `created_verified`.
+
+## Collection creation invariants
+
+- Preview performs no collection write. It stores the exact missing root collection name as an
+  approval-bound creation intent.
+- Commit verifies approval and writable user identity before collection creation.
+- A persisted write token and `collection.state.json` bind the operation to the manifest.
+- If the exact root name appears before commit or after an unknown network result, its key is
+  reconciled and reused.
+- The returned key is persisted before item creation and reused by resume.
+- Existing items are never moved or added to the new collection.
 
 ## Status handling
 

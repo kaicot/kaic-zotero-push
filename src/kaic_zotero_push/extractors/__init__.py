@@ -13,6 +13,7 @@ from docx import Document
 from openpyxl import load_workbook
 
 from kaic_zotero_push.errors import InputError
+from kaic_zotero_push.extractors.sections import is_reference_heading, reference_paragraphs
 from kaic_zotero_push.models import (
     ExtractedDocument,
     SourceCandidate,
@@ -101,7 +102,8 @@ def _extract_text(path: Path) -> list[SourceCandidate]:
         raise InputError(code="EXTRACTION_FAILED", detail="Text input must be UTF-8.") from error
     if "\x00" in text:
         raise InputError(code="INPUT_UNSUPPORTED", detail="Binary content is not a text document.")
-    return _segment_lines(text.splitlines(), locator_name="line")
+    lines = [line for line in text.splitlines() if not is_reference_heading(line)]
+    return _segment_lines(lines, locator_name="line")
 
 
 def _extract_csv(path: Path) -> list[SourceCandidate]:
@@ -162,6 +164,16 @@ def _extract_xlsx(path: Path) -> list[SourceCandidate]:
 
 def _extract_docx(path: Path) -> list[SourceCandidate]:
     document = Document(str(path))
+    section_confirmed, paragraphs = reference_paragraphs(document)
+    if section_confirmed:
+        return [
+            SourceCandidate(
+                source_index=index,
+                source_locator=f"paragraph={paragraph_index}",
+                raw_text=text,
+            )
+            for index, (paragraph_index, text) in enumerate(paragraphs, start=1)
+        ]
     blocks: list[tuple[str, str]] = []
     for paragraph_index, paragraph in enumerate(document.paragraphs, start=1):
         if paragraph.text.strip():
@@ -172,7 +184,12 @@ def _extract_docx(path: Path) -> list[SourceCandidate]:
             if text:
                 blocks.append((f"table={table_index};row={row_index}", text))
     return [
-        SourceCandidate(source_index=index, source_locator=locator, raw_text=text)
+        SourceCandidate(
+            source_index=index,
+            source_locator=locator,
+            raw_text=text,
+            section_confirmed=False,
+        )
         for index, (locator, text) in enumerate(blocks, start=1)
     ]
 
@@ -196,7 +213,7 @@ def _extract_pdf(path: Path) -> list[SourceCandidate]:
         if not blocks:
             raise InputError(
                 code="EXTRACTION_FAILED",
-                detail="PDF has no text layer; scanned PDFs are not supported in v0.1.",
+                detail="PDF has no text layer; scanned PDFs are not supported in v0.2.",
             )
         return blocks
 

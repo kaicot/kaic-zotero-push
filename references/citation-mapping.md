@@ -17,6 +17,24 @@ The parser is conservative. The default is `journalArticle`; explicit structured
 unambiguous source markers may select another supported type. Ambiguous records must be reviewed,
 not guessed.
 
+## Parsing order and journal gate
+
+1. Structured CSV/XLSX fields.
+2. MDPI/Vancouver author-title-journal-year-tail citations.
+3. APA author-year citations.
+4. Conservative fallback.
+
+MDPI/Vancouver parsing removes DOI and URL before splitting fields, preserves semicolon author
+order and hyphenated initials, and stores both page ranges and article numbers in `pages`.
+Journal abbreviations remain exactly as supplied.
+
+A `journalArticle` can be created only when its title is separated from the full citation,
+`creators` and `container_title` are present, a date or DOI exists, and DOI text is absent from
+the title. Failed gates are rendered as stable warning codes and remain `needs_review`.
+
+Institution-authored reports preserve the organization in Zotero's single `name` creator field,
+plus title, date, publisher, and verified URL.
+
 ## Field mapping
 
 | Internal field | Zotero field |

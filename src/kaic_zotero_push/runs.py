@@ -58,6 +58,8 @@ def render_preview(manifest: Manifest) -> str:
     for record in manifest.records:
         counts[record.decision] += 1
     target = manifest.target.collection_name or "라이브러리 루트"
+    if manifest.target.create_collection:
+        target = f"{target} (새 컬렉션 생성 예정)"
     lines = [
         "# Zotero 등록 미리보기",
         "",
@@ -75,5 +77,13 @@ def render_preview(manifest: Manifest) -> str:
         identifier = f"DOI {record.parsed.doi}" if record.parsed.doi else "DOI 없음"
         description = f"{record.parsed.title} ({record.parsed.date or '연도 미상'}) / {identifier}"
         lines.append(f"{record.source.source_index}. [{record.parsed.item_type}] {description}")
+    review_records = [item for item in manifest.records if item.decision is Decision.NEEDS_REVIEW][
+        :10
+    ]
+    if review_records:
+        lines.extend(["", "## 검토 필요 항목"])
+        for record in review_records:
+            warnings = ", ".join(record.quality.warnings)
+            lines.append(f"- {record.source.source_index}. {record.parsed.title}: {warnings}")
     lines.extend(["", "**실제 등록은 아직 수행하지 않았습니다.**"])
     return "\n".join(lines) + "\n"

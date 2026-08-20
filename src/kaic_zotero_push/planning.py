@@ -51,7 +51,7 @@ def _resolve_collection(name: str | None, collections: list[Collection]) -> Coll
     if len(matches) == 1:
         return matches[0]
     if not matches:
-        raise CollectionError(detail=f"Collection not found: {name}")
+        return None
     keys = ", ".join(collection.key for collection in matches)
     raise CollectionError(detail=f"Collection name is ambiguous; choose a key: {keys}")
 
@@ -68,6 +68,7 @@ def prepare_run(
             source_index=candidate.source_index,
             source_locator=candidate.source_locator,
             structured=candidate.structured,
+            section_confirmed=candidate.section_confirmed,
         )
         for candidate in extracted.candidates
     ]
@@ -89,7 +90,8 @@ def prepare_run(
         target = TargetLibrary(
             user_id=access.user_id,
             collection_key=collection.key if collection else None,
-            collection_name=collection.name if collection else None,
+            collection_name=collection.name if collection else request.collection_name,
+            create_collection=collection is None and request.collection_name is not None,
         )
         records = classify_duplicates(records, gateway.list_existing_items(access.user_id))
     manifest = Manifest.build(

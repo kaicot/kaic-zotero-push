@@ -23,6 +23,15 @@ class ZoteroGateway(Protocol):
         """Return personal-library collections."""
         ...
 
+    def create_collection(
+        self,
+        user_id: int,
+        name: str,
+        write_token: str,
+    ) -> Collection:
+        """Create one approved root collection."""
+        ...
+
     def list_existing_items(self, user_id: int) -> list[ExistingItem]:
         """Return top-level items used for duplicate detection."""
         ...

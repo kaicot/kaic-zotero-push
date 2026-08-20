@@ -12,8 +12,9 @@ from kaic_zotero_push.batch_writer import (
     process_batch,
     verify_record,
 )
+from kaic_zotero_push.collection_writer import resolve_collection_key
 from kaic_zotero_push.dedup import classify_duplicates
-from kaic_zotero_push.errors import CollectionError, RunStateError, ZoteroApiError
+from kaic_zotero_push.errors import RunStateError, ZoteroApiError
 from kaic_zotero_push.models import (
     Approval,
     Decision,
@@ -96,15 +97,10 @@ def _resume_outcomes(context: WriteContext) -> list[ItemOutcome]:
     return preserved
 
 
-def _validate_destination(manifest: Manifest, gateway: ZoteroGateway) -> None:
+def _validate_user(manifest: Manifest, gateway: ZoteroGateway) -> None:
     access = gateway.current_key()
     if not access.can_write or access.user_id != manifest.target.user_id:
         raise ZoteroApiError(status_code=403, detail="Approval targets a different writable user.")
-    if manifest.target.collection_key is None:
-        return
-    collection_keys = {item.key for item in gateway.list_collections(access.user_id)}
-    if manifest.target.collection_key not in collection_keys:
-        raise CollectionError(detail="The approved collection no longer exists.")
 
 
 def _pending_records(
@@ -151,7 +147,7 @@ def _payload_pairs(context: WriteContext, records: list[ReferenceRecord]) -> lis
                 map_record(
                     record,
                     template,
-                    collection_key=context.manifest.target.collection_key,
+                    collection_key=context.collection_key,
                 ),
             )
         )
@@ -184,8 +180,14 @@ def commit_run(request: CommitRequest, gateway: ZoteroGateway) -> Receipt:
     manifest = read_model(request.run_dir / "manifest.json", Manifest)
     approval = read_model(request.run_dir / "approval.json", Approval)
     verify_approval(manifest, approval)
-    _validate_destination(manifest, gateway)
-    context = WriteContext(run_dir=request.run_dir, manifest=manifest, gateway=gateway)
+    _validate_user(manifest, gateway)
+    collection_key = resolve_collection_key(request.run_dir, manifest, gateway)
+    context = WriteContext(
+        run_dir=request.run_dir,
+        manifest=manifest,
+        gateway=gateway,
+        collection_key=collection_key,
+    )
     outcomes = _resume_outcomes(context)
     completed_indices = {outcome.source_index for outcome in outcomes}
     outcomes.extend(

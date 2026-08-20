@@ -12,6 +12,9 @@ from pydantic import BaseModel, ConfigDict
 
 from kaic_zotero_push.errors import ZoteroApiError
 from kaic_zotero_push.models import (
+    CreateBatchResponse,
+    CreateFailure,
+    CreateSuccess,
     ItemOutcome,
     Manifest,
     OutcomeStatus,
@@ -20,7 +23,10 @@ from kaic_zotero_push.models import (
 from kaic_zotero_push.parsing import normalize_doi, normalize_title
 from kaic_zotero_push.runs import read_model, write_json, write_model
 from kaic_zotero_push.zotero.models import RemoteItem, ZoteroItemPayload
-from kaic_zotero_push.zotero.responses import normalize_create_response
+from kaic_zotero_push.zotero.responses import (
+    extract_create_successes,
+    normalize_create_response,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,6 +43,7 @@ class WriteContext:
     run_dir: Path
     manifest: Manifest
     gateway: ZoteroGateway
+    collection_key: str | None
 
 
 class _BatchState(BaseModel):
@@ -44,6 +51,13 @@ class _BatchState(BaseModel):
 
     request_sha256: str
     write_token: str
+
+
+class _BatchKeys(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+
+    request_sha256: str
+    successes: list[CreateSuccess]
 
 
 def verify_record(
@@ -84,30 +98,59 @@ def process_batch(
     payloads = [pair[1] for pair in batch]
     batch_dir = context.run_dir / "batches"
     state = _batch_state(batch_dir / f"batch-{batch_number:03d}.state.json", payloads)
+    keys_path = batch_dir / f"batch-{batch_number:03d}.keys.json"
+    persisted_keys = read_model(keys_path, _BatchKeys) if keys_path.is_file() else None
+    persisted_successes = (
+        persisted_keys.successes
+        if persisted_keys is not None and persisted_keys.request_sha256 == state.request_sha256
+        else []
+    )
     write_json(
         batch_dir / f"batch-{batch_number:03d}.request.json",
         [payload.root for payload in payloads],
     )
-    try:
-        raw_response = context.gateway.create_items(
-            context.manifest.target.user_id,
-            payloads,
-            state.write_token,
-        )
-        write_json(
-            batch_dir / f"batch-{batch_number:03d}.response.redacted.json",
-            raw_response.root,
-        )
-        normalized = normalize_create_response(raw_response.root, expected_count=len(batch))
-    except ZoteroApiError as error:
-        return [
-            ItemOutcome(
-                source_index=record.source.source_index,
-                status=OutcomeStatus.WRITE_FAILED,
-                detail=str(error),
+    complete_indices = set(range(len(batch)))
+    if {success.index for success in persisted_successes} == complete_indices:
+        normalized = CreateBatchResponse(successes=persisted_successes, failures=[])
+    else:
+        try:
+            raw_response = context.gateway.create_items(
+                context.manifest.target.user_id,
+                payloads,
+                state.write_token,
             )
-            for record in records
-        ]
+            write_json(
+                batch_dir / f"batch-{batch_number:03d}.response.redacted.json",
+                raw_response.root,
+            )
+            known_successes = extract_create_successes(raw_response.root)
+            if known_successes:
+                write_model(
+                    keys_path,
+                    _BatchKeys(
+                        request_sha256=state.request_sha256,
+                        successes=known_successes,
+                    ),
+                )
+            normalized = normalize_create_response(raw_response.root, expected_count=len(batch))
+        except ZoteroApiError as error:
+            if not persisted_successes:
+                return [
+                    ItemOutcome(
+                        source_index=record.source.source_index,
+                        status=OutcomeStatus.WRITE_FAILED,
+                        detail=str(error),
+                    )
+                    for record in records
+                ]
+            persisted_indices = {success.index for success in persisted_successes}
+            normalized = CreateBatchResponse(
+                successes=persisted_successes,
+                failures=[
+                    CreateFailure(index=index, code=500, message=str(error))
+                    for index in sorted(complete_indices - persisted_indices)
+                ],
+            )
     outcomes = [
         ItemOutcome(
             source_index=records[failure.index].source.source_index,
@@ -126,7 +169,7 @@ def process_batch(
             verified = verify_record(
                 record,
                 remote,
-                context.manifest.target.collection_key,
+                context.collection_key,
             )
         except ZoteroApiError:
             verified = False

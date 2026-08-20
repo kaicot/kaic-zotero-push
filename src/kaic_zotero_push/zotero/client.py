@@ -20,6 +20,7 @@ from kaic_zotero_push.zotero.models import (
     ZoteroItemPayload,
     ZoteroResponsePayload,
 )
+from kaic_zotero_push.zotero.responses import normalize_create_response
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -51,7 +52,7 @@ class ZoteroClient:
             "Zotero-API-Key": api_key,
             "Zotero-API-Version": "3",
             "Content-Type": "application/json",
-            "User-Agent": "kaic-zotero-push/0.1.1",
+            "User-Agent": "kaic-zotero-push/0.2.0",
         }
         if transport is not None:
             self._read_client = httpx2.Client(
@@ -149,6 +150,32 @@ class ZoteroClient:
             )
             for envelope in envelopes
         ]
+
+    def create_collection(
+        self,
+        user_id: int,
+        name: str,
+        write_token: str,
+    ) -> Collection:
+        """Create one root collection without transport retries."""
+        payload: list[dict[str, JsonValue]] = [{"name": name, "parentCollection": False}]
+        try:
+            response = self._write_client.post(
+                f"/users/{user_id}/collections",
+                headers={"Zotero-Write-Token": write_token},
+                content=TypeAdapter(list[dict[str, JsonValue]]).dump_json(payload),
+            )
+        except httpx2.RequestError as error:
+            raise ZoteroApiError(
+                status_code=0,
+                detail="Zotero collection creation outcome is unknown.",
+            ) from error
+        self._check(response)
+        raw = ZoteroResponsePayload.model_validate_json(response.content)
+        normalized = normalize_create_response(raw.root, expected_count=1)
+        if not normalized.successes:
+            raise ZoteroApiError(status_code=200, detail="Collection creation did not succeed.")
+        return Collection(key=normalized.successes[0].key, name=name)
 
     @staticmethod
     def _parent_key(value: str | Literal[False]) -> str | None:
