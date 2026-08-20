@@ -33,7 +33,7 @@ Accept:
 - text-based `.pdf`
 
 Reject encrypted, damaged, unsupported, or non-text-extractable inputs. Scanned PDFs, images,
-`.hwp`, `.hwpx`, and OCR are outside v0.2.
+`.hwp`, `.hwpx`, and OCR are outside v0.2.2.
 
 ## Setup
 
@@ -170,9 +170,13 @@ and retries only eligible failures. Never delete successful items to simulate ro
 - Preserve journal abbreviations, initials, volume, issue, page range or article number exactly
   as provided. Never expand or enrich them through external search.
 - Preserve structured and clearly formatted institution-authored reports as `report`.
+- Treat `Indicator`, `Press Release`, `User Guide`, `Raw Data`, `Reference Materials`,
+  `Valuation Study`, `보고서`, and `지침` as report evidence only when author, title,
+  publisher, and year can be separated from the source.
+- Preserve report publisher, place, and URL or DOI only when they occur in the input.
 
 ## Scope limits
 
 Decline requests to update, merge, or delete existing Zotero items; upload files; use group
-libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2.1 and do not attempt
+libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2.2 and do not attempt
 an improvised workaround.

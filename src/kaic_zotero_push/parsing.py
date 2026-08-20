@@ -29,6 +29,17 @@ _DOI_LABEL = re.compile(r"\bdoi\s*:\s*", re.IGNORECASE)
 _PUNCTUATION = re.compile(r"[^\w\s]", re.UNICODE)
 _SPACES = re.compile(r"\s+")
 _PARSED_THRESHOLD: Final = 0.8
+_REPORT_MARKERS: Final = (
+    "press release",
+    "user guide",
+    "raw data",
+    "reference materials",
+    "indicator",
+    "valuation study",
+    "report",
+    "보고서",
+    "지침",
+)
 
 
 def normalize_doi(raw: str | None) -> str | None:
@@ -55,10 +66,11 @@ def _item_type(text: str, explicit: str | None = None) -> str:
     keywords = {
         "thesis": ("thesis", "dissertation", "학위논문"),
         "conferencePaper": ("conference", "proceedings", "학술대회"),
-        "report": ("report", "보고서"),
         "preprint": ("preprint", "arxiv", "medrxiv", "biorxiv"),
         "book": ("isbn",),
     }
+    if any(marker in lowered for marker in _REPORT_MARKERS):
+        return "report"
     for item_type, markers in keywords.items():
         if any(marker in lowered for marker in markers):
             return item_type
@@ -115,8 +127,14 @@ def _journal_warnings(
     return warnings
 
 
-def _report_warnings(parsed: ParsedReference) -> list[str]:
+def _report_warnings(
+    parsed: ParsedReference,
+    source: SourceCandidate,
+) -> list[str]:
     warnings: list[str] = []
+    source_body = _without_identifiers(_NUMBER_PREFIX.sub("", source.raw_text))
+    if source.structured is None and normalize_title(parsed.title) == normalize_title(source_body):
+        warnings.append("unparsed_citation_title")
     if not parsed.creators:
         warnings.append("missing_creators")
     if not parsed.date:
@@ -132,7 +150,7 @@ def _quality(parsed: ParsedReference, source: SourceCandidate) -> Quality:
     warnings = (
         _journal_warnings(parsed, source)
         if is_journal
-        else (_report_warnings(parsed) if is_report else [])
+        else (_report_warnings(parsed, source) if is_report else [])
     )
     if not is_journal and not is_report and not parsed.title:
         warnings.append("missing_title")
@@ -168,9 +186,9 @@ def parse_candidate(
         citation = _without_identifiers(cleaned)
         detected_type = _item_type(citation)
         parsed = (
-            parse_mdpi_vancouver(citation, doi=doi, url=url)
+            (parse_report(citation, doi=doi, url=url) if detected_type == "report" else None)
+            or parse_mdpi_vancouver(citation, doi=doi, url=url)
             or parse_apa(citation, doi=doi, url=url)
-            or (parse_report(citation, url=url) if detected_type == "report" else None)
             or ParsedReference(
                 item_type=detected_type,
                 title=citation,

@@ -1,3 +1,4 @@
+from kaic_zotero_push.citation_parsers import parse_creators
 from kaic_zotero_push.models import Decision, ParseStatus, StructuredReference
 from kaic_zotero_push.parsing import normalize_doi, normalize_title, parse_candidate
 
@@ -11,6 +12,20 @@ def test_normalize_doi_when_url_prefix_present() -> None:
 
     # Then
     assert normalized == "10.1000/example"
+
+
+def test_parse_creators_when_personal_authors_use_and_preserves_both() -> None:
+    # Given
+    raw = "Smith, J. and Doe, A."
+
+    # When
+    creators = parse_creators(raw)
+
+    # Then
+    assert [(creator.last_name, creator.first_name) for creator in creators] == [
+        ("Smith", "J."),
+        ("Doe", "A."),
+    ]
 
 
 def test_parse_candidate_when_apa_reference_has_doi() -> None:

@@ -1,5 +1,7 @@
 # kaic-zotero-push
 
+현재 버전: **0.2.2**
+
 문서의 참고문헌을 로컬에서 추출·정규화하고 Zotero 기존 항목과 중복을 확인한 뒤,
 사용자가 미리보기를 명시적으로 승인한 경우에만 **Zotero 개인 라이브러리**에 신규
 서지 메타데이터를 등록하는 Codex/에이전트 스킬입니다.
@@ -23,8 +25,12 @@
   감사의 글·그림 종료 경계 탐지
 - 참고문헌 뒤 보충표 설명·각주·표 문단 제외 및 미확정 종료의 `needs_review` 격리
 - MDPI/Vancouver, APA, 기관 보고서와 구조화 입력의 형식별 파싱
+- `Indicator`, `Press Release`, `User Guide`, `Raw Data`, `Reference Materials`,
+  `Valuation Study`, `보고서`, `지침` 기반 보수적 `report` 판정
 - 저자, 제목, 저널명, 연도, 권·호, 페이지·논문번호, DOI 분리
 - 필수 저널 메타데이터 누락 항목의 자동 `needs_review` 격리
+- 보고서와 저널에 서로 다른 품질 게이트를 적용하고 검토 목록에 유형 후보와 stable
+  warning code 표시
 - DOI, PMID, ISBN, URL 및 제목·연도·제1저자 기반 중복 탐지
 - 등록 예정 / 중복 제외 / 검토 필요 / 파싱 실패 미리보기
 - Zotero Web API v3 개인 라이브러리 신규 항목 생성
@@ -190,7 +196,7 @@ HTTP 헤더는 저장하지 않습니다.
 확정 중복은 자동 제외합니다. 의심 중복은 `needs_review`로 보내며 자동 등록하지
 않습니다. 같은 입력을 재실행할 때도 최신 Zotero 항목을 다시 조회합니다.
 
-## v0.2 제한
+## v0.2.2 제한
 
 - `.hwp`, `.hwpx`, 스캔 PDF, 이미지 OCR 미지원
 - 그룹 라이브러리 쓰기 미지원

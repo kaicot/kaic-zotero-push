@@ -84,6 +84,13 @@ def render_preview(manifest: Manifest) -> str:
         lines.extend(["", "## 검토 필요 항목"])
         for record in review_records:
             warnings = ", ".join(record.quality.warnings)
-            lines.append(f"- {record.source.source_index}. {record.parsed.title}: {warnings}")
+            lines.append(
+                "".join(
+                    (
+                        f"- {record.source.source_index}. [{record.parsed.item_type}] ",
+                        f"{record.parsed.title}: {warnings}",
+                    )
+                )
+            )
     lines.extend(["", "**실제 등록은 아직 수행하지 않았습니다.**"])
     return "\n".join(lines) + "\n"

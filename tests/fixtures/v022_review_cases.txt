@@ -1,0 +1,6 @@
+1. OECD. Suicide Rates (Indicator); OECD Publishing: Paris, France, 2024. https://doi.org/10.1787/a82f3459-en
+2. Ministry of Health and Welfare (Republic of Korea). Innovation Plan for Mental Health Policy: Transition to Whole-Stage Management of Prevention–Treatment–Recovery; Press Release; MOHW: Sejong, Republic of Korea, 2023. (In Korean)
+3. Choi, B.; Joo, S.; Kim, H.K. Social isolation and suicidal ideation among older adults in Korea: the role of community welfare spending and community trust. Res. Aging 2026. https://doi.org/10.1177/01640275261463493
+4. Korea Disease Control and Prevention Agency. 2022 Korea Community Health Survey Raw Data User Guide and Reference Materials; KDCA: Cheongju, Republic of Korea, 2023. Available online: https://chs.kdca.go.kr/chs/mnl/mnlBoardMain.do (accessed on 11 July 2026). (In Korean)
+5. Nam, H.S.; Kim, K.Y.; Kwon, S.S.; Koh, K.W.; Kind, P. EQ-5D Korean Valuation Study Using Time Trade-Off Method; Korea Centers for Disease Control and Prevention: Seoul, Republic of Korea, 2007. (In Korean)
+6. Pullenayegum, E.M.; Tarride, J.-E.; Xie, F.; Goeree, R.; Gerstein, H.C.; O'Reilly, D. Analysis of health utility data when some subjects attain the upper bound of 1: Are Tobit and CLAD models appropriate? Value Health 2010, 13, 487–494. https://doi.org/10.1111/j.1524-4733.2010.00695.x

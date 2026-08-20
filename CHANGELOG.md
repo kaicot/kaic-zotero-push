@@ -2,6 +2,21 @@
 
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
 
+## [0.2.2] - 2026-08-21
+
+### 개선
+
+- `Indicator`, `Press Release`, `User Guide`, `Raw Data`, `Reference Materials`,
+  `Valuation Study`, `보고서`, `지침` 표지를 가진 기관 자료를 `report`로 판정
+- 세미콜론형 보고서에서 기관·개인 저자, 제목, 발행기관, 발행지, 연도, 확인된
+  URL·DOI를 원문 그대로 분리
+- 권·호·페이지가 없는 온라인 선행 논문과 물음표로 끝나는 논문 제목을 저널명·연도
+  꼬리부에서 분리
+- 권(호), 쉼표, 세미콜론, 콜론 꼬리부의 권·호·페이지/논문번호 인식 확대
+- 구조화하지 못한 보고서 원문을 `unparsed_citation_title` 경고와 함께 격리하고,
+  검토 목록에 유형 후보와 누락 필드를 함께 표시
+- 실제 문제 인용 6건 fixture 기반 보고서·저널 회귀 검증 추가
+
 ## [0.2.1] - 2026-08-21
 
 ### 수정

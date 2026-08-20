@@ -25,15 +25,19 @@ not guessed.
 4. Conservative fallback.
 
 MDPI/Vancouver parsing removes DOI and URL before splitting fields, preserves semicolon author
-order and hyphenated initials, and stores both page ranges and article numbers in `pages`.
-Journal abbreviations remain exactly as supplied.
+order, hyphenated initials, and apostrophes, and stores both page ranges and article numbers in
+`pages`. Journal abbreviations remain exactly as supplied. A separated journal and year are
+sufficient for online-first articles when volume, issue, and pages are absent.
 
 A `journalArticle` can be created only when its title is separated from the full citation,
 `creators` and `container_title` are present, a date or DOI exists, and DOI text is absent from
 the title. Failed gates are rendered as stable warning codes and remain `needs_review`.
 
-Institution-authored reports preserve the organization in Zotero's single `name` creator field,
-plus title, date, publisher, and verified URL.
+Report evidence includes `Indicator`, `Press Release`, `User Guide`, `Raw Data`,
+`Reference Materials`, `Valuation Study`, `보고서`, and `지침`. Institution-authored reports
+preserve the organization in Zotero's single `name` creator field. Clearly supplied personal
+authors remain personal creators. Title, date, publisher, place, and verified URL or DOI are
+mapped only when present in the source.
 
 ## Field mapping
 
