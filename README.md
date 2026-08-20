@@ -19,7 +19,9 @@
 ## 지원 기능
 
 - `.docx`, `.xlsx`, `.csv`, `.md`, `.txt`, 텍스트형 `.pdf` 추출
-- DOCX `References`·`Bibliography`·`참고문헌` 영역 경계 탐지와 본문·표 제외
+- DOCX `References`·`Bibliography`·`참고문헌` 시작점과 후속 표·보충자료·부록·
+  감사의 글·그림 종료 경계 탐지
+- 참고문헌 뒤 보충표 설명·각주·표 문단 제외 및 미확정 종료의 `needs_review` 격리
 - MDPI/Vancouver, APA, 기관 보고서와 구조화 입력의 형식별 파싱
 - 저자, 제목, 저널명, 연도, 권·호, 페이지·논문번호, DOI 분리
 - 필수 저널 메타데이터 누락 항목의 자동 `needs_review` 격리
@@ -104,6 +106,13 @@ uv run kaic-zotero-push preview "D:\문서\references.txt" --offline
 
 오프라인 미리보기는 원격 중복 상태와 Zotero 사용자가 결합되지 않으므로 실제 등록
 승인을 만들 수 없습니다.
+
+DOCX는 `References`, `Bibliography`, `참고문헌` 제목부터 참고문헌을 읽고,
+`Table S1/S2`, `Table 1`, `Supplementary`, `Supporting Information`, `Appendix`,
+`Acknowledgments`, `Figure` 같은 후속 영역 표지에서 즉시 중단합니다. 이 표지와
+이후 설명·각주·표 문단은 후보에 포함하지 않습니다. 명시적 종료 표지를 찾지 못한
+DOCX 참고문헌은 문서 끝까지 자동 등록 대상으로 확정하지 않고 `needs_review`로
+표시합니다.
 
 ### 승인과 등록
 

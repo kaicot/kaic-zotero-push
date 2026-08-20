@@ -164,15 +164,19 @@ def _extract_xlsx(path: Path) -> list[SourceCandidate]:
 
 def _extract_docx(path: Path) -> list[SourceCandidate]:
     document = Document(str(path))
-    section_confirmed, paragraphs = reference_paragraphs(document)
-    if section_confirmed:
+    section = reference_paragraphs(document)
+    if section.found:
         return [
             SourceCandidate(
                 source_index=index,
                 source_locator=f"paragraph={paragraph_index}",
                 raw_text=text,
+                section_confirmed=section.boundary_confirmed,
             )
-            for index, (paragraph_index, text) in enumerate(paragraphs, start=1)
+            for index, (paragraph_index, text) in enumerate(
+                section.paragraphs,
+                start=1,
+            )
         ]
     blocks: list[tuple[str, str]] = []
     for paragraph_index, paragraph in enumerate(document.paragraphs, start=1):

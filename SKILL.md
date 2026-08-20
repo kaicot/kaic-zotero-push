@@ -157,8 +157,14 @@ and retries only eligible failures. Never delete successful items to simulate ro
 ## Parsing quality gate
 
 - Use structured fields first, then MDPI/Vancouver, then APA, then conservative fallback.
-- For DOCX, automatically create items only from a confirmed `References`, `Bibliography`, or
-  `참고문헌` section. Unbounded DOCX candidates require review.
+- For DOCX, begin only at a standalone `References`, `Bibliography`, or `참고문헌`
+  heading. Stop immediately at normal-style headings or text markers for `Table S1/S2`,
+  numbered tables, `Supplementary`, `Supplementary Table`, `Supporting Information`,
+  `Appendix`, `Acknowledgments`, or `Figure`.
+- Exclude the terminator and every later caption, footnote, paragraph, and table. Preserve
+  unnumbered references up to that boundary; do not infer the boundary from numbering.
+- If no explicit DOCX end boundary is found, keep the located reference candidates but mark
+  their section unconfirmed so they remain `needs_review`.
 - A journal article is eligible only when it has a separated title, at least one creator,
   a date or DOI, and a publication title; DOI text must not remain in the title.
 - Preserve journal abbreviations, initials, volume, issue, page range or article number exactly
@@ -168,5 +174,5 @@ and retries only eligible failures. Never delete successful items to simulate ro
 ## Scope limits
 
 Decline requests to update, merge, or delete existing Zotero items; upload files; use group
-libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2 and do not attempt
+libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2.1 and do not attempt
 an improvised workaround.

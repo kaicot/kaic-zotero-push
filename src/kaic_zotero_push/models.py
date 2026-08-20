@@ -198,7 +198,7 @@ class Manifest(StrictModel):
     """Immutable import plan."""
 
     schema_version: str = "manifest-v1"
-    parser_version: str = "0.2.0"
+    parser_version: str = "0.2.1"
     input_path: str
     input_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     target: TargetLibrary
