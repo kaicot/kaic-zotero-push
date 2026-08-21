@@ -1,6 +1,6 @@
 # kaic-zotero-push
 
-현재 버전: **0.2.2**
+현재 버전: **0.2.3**
 
 문서의 참고문헌을 로컬에서 추출·정규화하고 Zotero 기존 항목과 중복을 확인한 뒤,
 사용자가 미리보기를 명시적으로 승인한 경우에만 **Zotero 개인 라이브러리**에 신규
@@ -188,15 +188,23 @@ HTTP 헤더는 저장하지 않습니다.
 
 ## 중복 정책
 
+원격 Zotero 중복은 지정한 등록 대상 범위 안에서만 판정합니다. 다른 컬렉션에
+같은 항목이 있어도 현재 컬렉션의 관리 목적을 위해 신규 메타데이터 항목을 만들 수
+있습니다. 같은 문서 안에서 반복된 참고문헌은 기존 Zotero 항목과 무관하게
+`needs_review`로 보류합니다.
+
+대상 범위 안의 원격 항목은 다음 순서로 판정합니다.
+
 1. 정규화된 DOI 완전 일치
 2. PMID 또는 ISBN 완전 일치
 3. 정규화된 제목 + 발행연도 + 제1저자 일치
 4. 높은 제목 유사도와 연도 또는 저자 근거
 
-확정 중복은 자동 제외합니다. 의심 중복은 `needs_review`로 보내며 자동 등록하지
-않습니다. 같은 입력을 재실행할 때도 최신 Zotero 항목을 다시 조회합니다.
+대상 범위 안의 확정 중복은 자동 제외합니다. 의심 중복과 문서 내부 중복은
+`needs_review`로 보내며 자동 등록하지 않습니다. 같은 입력을 재실행할 때도 최신
+Zotero 항목과 컬렉션 배치를 다시 조회합니다.
 
-## v0.2.2 제한
+## v0.2.3 제한
 
 - `.hwp`, `.hwpx`, 스캔 PDF, 이미지 OCR 미지원
 - 그룹 라이브러리 쓰기 미지원
@@ -214,9 +222,12 @@ uv sync --dev
 uv run ruff format --check .
 uv run ruff check .
 uv run basedpyright
-uv run pytest
 uv build
 ```
+
+개인 문서에서 만든 회귀 fixture가 공개되지 않도록 `tests/`는 로컬 검증 환경에서만
+관리하며 GitHub 저장소와 배포 패키지에는 포함하지 않습니다. 로컬 검증 checkout에
+테스트가 있는 경우 `uv run pytest`로 전체 회귀 검사를 실행합니다.
 
 실제 Zotero 통합 검증은 별도 테스트 컬렉션과 전용 API 키를 사용하세요. 테스트가
 만든 항목의 자동 삭제는 제공하지 않으며, 일반 실행은 Zotero 삭제 API를 호출하지
@@ -230,10 +241,6 @@ uv build
   [`references/zotero-api-contract.md`](references/zotero-api-contract.md)
 - 서지 매핑과 중복 정책:
   [`references/citation-mapping.md`](references/citation-mapping.md)
-- 원 개발 명세:
-  [`Zotero_문서레퍼런스_등록_스킬_개발명세서_v0.1.md`](Zotero_문서레퍼런스_등록_스킬_개발명세서_v0.1.md)
-- v0.2 개선안:
-  [`Zotero_문서레퍼런스_등록_스킬_개선안_v0.2_저널메타데이터파싱.md`](Zotero_문서레퍼런스_등록_스킬_개선안_v0.2_저널메타데이터파싱.md)
 
 ## 라이선스
 

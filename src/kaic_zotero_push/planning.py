@@ -74,6 +74,7 @@ def prepare_run(
     ]
     if request.offline:
         target = TargetLibrary(user_id=0)
+        records = classify_duplicates(records, [])
     else:
         if gateway is None:
             raise RunStateError(detail="Online preview requires a Zotero gateway.")
@@ -93,7 +94,12 @@ def prepare_run(
             collection_name=collection.name if collection else request.collection_name,
             create_collection=collection is None and request.collection_name is not None,
         )
-        records = classify_duplicates(records, gateway.list_existing_items(access.user_id))
+        records = classify_duplicates(
+            records,
+            gateway.list_existing_items(access.user_id),
+            target_collection_key=target.collection_key,
+            target_is_new_collection=target.create_collection,
+        )
     manifest = Manifest.build(
         input_path=request.input_path,
         input_sha256=extracted.file_sha256,

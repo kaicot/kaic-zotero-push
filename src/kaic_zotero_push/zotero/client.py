@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Final, Literal, Self, final
 import httpx2
 from pydantic import TypeAdapter, ValidationError
 
+from kaic_zotero_push import __version__
 from kaic_zotero_push.errors import ZoteroApiError
 from kaic_zotero_push.models import Creator, ExistingItem, JsonValue, ParsedReference
 from kaic_zotero_push.zotero.models import (
@@ -52,7 +53,7 @@ class ZoteroClient:
             "Zotero-API-Key": api_key,
             "Zotero-API-Version": "3",
             "Content-Type": "application/json",
-            "User-Agent": "kaic-zotero-push/0.2.0",
+            "User-Agent": f"kaic-zotero-push/{__version__}",
         }
         if transport is not None:
             self._read_client = httpx2.Client(
@@ -220,6 +221,7 @@ class ZoteroClient:
                 isbn=item.data.isbn,
                 url=item.data.url,
             ),
+            collections=item.data.collections,
         )
 
     def get_template(self, item_type: str) -> ZoteroItemPayload:

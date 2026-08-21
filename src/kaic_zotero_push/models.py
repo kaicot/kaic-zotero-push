@@ -173,6 +173,7 @@ class ExistingItem(StrictModel):
 
     key: str
     parsed: ParsedReference
+    collections: list[str] = Field(default_factory=list)
 
 
 class TargetLibrary(StrictModel):
@@ -198,7 +199,7 @@ class Manifest(StrictModel):
     """Immutable import plan."""
 
     schema_version: str = "manifest-v1"
-    parser_version: str = "0.2.2"
+    parser_version: str = "0.2.3"
     input_path: str
     input_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     target: TargetLibrary

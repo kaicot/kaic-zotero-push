@@ -116,6 +116,7 @@ def _pending_records(
     refreshed = classify_duplicates(
         create_records,
         context.gateway.list_existing_items(context.manifest.target.user_id),
+        target_collection_key=context.collection_key,
     )
     pending: list[ReferenceRecord] = []
     duplicates: list[ItemOutcome] = []

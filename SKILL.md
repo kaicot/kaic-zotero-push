@@ -33,7 +33,7 @@ Accept:
 - text-based `.pdf`
 
 Reject encrypted, damaged, unsupported, or non-text-extractable inputs. Scanned PDFs, images,
-`.hwp`, `.hwpx`, and OCR are outside v0.2.2.
+`.hwp`, `.hwpx`, and OCR are outside v0.2.3.
 
 ## Setup
 
@@ -153,6 +153,10 @@ and retries only eligible failures. Never delete successful items to simulate ro
 - Persist and reuse the created collection key during resume; never create it twice.
 - Bind approval to the existing key or exact create-if-missing name, never an unapproved
   destination.
+- Scope remote duplicate matching to the requested destination collection; an item found only
+  in another collection does not block creation in the current collection.
+- Treat repeated references within the same input document as `needs_review`, including when a
+  matching remote item also exists.
 
 ## Parsing quality gate
 
@@ -178,5 +182,5 @@ and retries only eligible failures. Never delete successful items to simulate ro
 ## Scope limits
 
 Decline requests to update, merge, or delete existing Zotero items; upload files; use group
-libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2.2 and do not attempt
+libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2.3 and do not attempt
 an improvised workaround.

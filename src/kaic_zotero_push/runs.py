@@ -83,7 +83,18 @@ def render_preview(manifest: Manifest) -> str:
     if review_records:
         lines.extend(["", "## 검토 필요 항목"])
         for record in review_records:
-            warnings = ", ".join(record.quality.warnings)
+            details = list(record.quality.warnings)
+            duplicate_messages: dict[str | None, str] = {
+                "within_input_exact": (f"문서 내부 동일 항목: {record.duplicate.matched_item_key}"),
+                "within_input_title_similarity": (
+                    f"문서 내부 제목 유사 항목: {record.duplicate.matched_item_key}"
+                ),
+                "title_similarity": "대상 컬렉션의 기존 항목과 제목 유사",
+            }
+            duplicate_message = duplicate_messages.get(record.duplicate.reason)
+            if duplicate_message is not None:
+                details.append(duplicate_message)
+            warnings = ", ".join(details) or "검토 사유 미상"
             lines.append(
                 "".join(
                     (

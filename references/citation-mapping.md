@@ -60,7 +60,13 @@ mapped only when present in the source.
 Only fields present in the live `/items/new` template are sent. Creator order is preserved.
 Institutional or inseparable names use Zotero's single `name` field.
 
-## Duplicate order
+## Duplicate scope and order
+
+Remote duplicate matching is scoped to the requested destination. An existing item in another
+collection does not block creation for the current collection. When no collection is requested,
+only root items with an empty collection list are in scope. A newly requested collection has no
+remote items in scope during preview. Repeated references in the same input are always
+`needs_review`, even when a matching remote item also exists.
 
 1. Exact normalized DOI.
 2. Exact PMID or ISBN.

@@ -53,15 +53,70 @@ def _possible(candidate: ReferenceRecord, existing: ExistingItem) -> bool:
 def classify_duplicates(
     candidates: list[ReferenceRecord],
     existing_items: list[ExistingItem],
+    *,
+    target_collection_key: str | None = None,
+    target_is_new_collection: bool = False,
 ) -> list[ReferenceRecord]:
-    """Classify exact and possible duplicates, including within the input."""
+    """Classify duplicates within the input and the target collection only."""
     classified: list[ReferenceRecord] = []
-    index = list(existing_items)
+    if target_is_new_collection:
+        remote_index: list[ExistingItem] = []
+    elif target_collection_key is None:
+        remote_index = [item for item in existing_items if not item.collections]
+    else:
+        remote_index = [
+            item for item in existing_items if target_collection_key in item.collections
+        ]
+    document_index: list[ExistingItem] = []
     for candidate in candidates:
+        local_exact = next(
+            (
+                (existing, reason)
+                for existing in document_index
+                if (reason := _exact_reason(candidate, existing)) is not None
+            ),
+            None,
+        )
+        local_possible = (
+            None
+            if local_exact is not None
+            else next(
+                (existing for existing in document_index if _possible(candidate, existing)),
+                None,
+            )
+        )
+        if local_exact is not None or local_possible is not None:
+            if local_exact is not None:
+                matched = local_exact[0]
+                reason = "within_input_exact"
+            elif local_possible is not None:
+                matched = local_possible
+                reason = "within_input_title_similarity"
+            else:
+                continue
+            updated = candidate.model_copy(
+                update={
+                    "decision": Decision.NEEDS_REVIEW,
+                    "duplicate": DuplicateInfo(
+                        status="within_input",
+                        matched_item_key=matched.key,
+                        reason=reason,
+                    ),
+                }
+            )
+            classified.append(updated)
+            document_index.append(
+                ExistingItem(
+                    key=f"source:{candidate.source.source_index}",
+                    parsed=candidate.parsed,
+                )
+            )
+            continue
+
         exact = next(
             (
                 (existing, reason)
-                for existing in index
+                for existing in remote_index
                 if (reason := _exact_reason(candidate, existing)) is not None
             ),
             None,
@@ -80,7 +135,7 @@ def classify_duplicates(
             )
         else:
             possible = next(
-                (existing for existing in index if _possible(candidate, existing)),
+                (existing for existing in remote_index if _possible(candidate, existing)),
                 None,
             )
             if possible is None:
@@ -97,11 +152,10 @@ def classify_duplicates(
                     }
                 )
         classified.append(updated)
-        if updated.decision is Decision.CREATE:
-            index.append(
-                ExistingItem(
-                    key=f"local:{updated.source.source_index}",
-                    parsed=updated.parsed,
-                )
+        document_index.append(
+            ExistingItem(
+                key=f"source:{candidate.source.source_index}",
+                parsed=candidate.parsed,
             )
+        )
     return classified
