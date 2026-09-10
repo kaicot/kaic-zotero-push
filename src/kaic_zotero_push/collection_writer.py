@@ -25,6 +25,7 @@ class _CollectionState(BaseModel):
     name: str
     write_token: str
     key: str | None = None
+    submitted: bool | None = None
 
 
 def _matching_root_collections(
@@ -51,6 +52,7 @@ def _load_collection_state(
             manifest_sha256=manifest_sha256,
             name=name,
             write_token=secrets.token_hex(16),
+            submitted=False,
         )
     )
     if state.manifest_sha256 != manifest_sha256 or state.name != name:
@@ -63,13 +65,19 @@ def _create_or_reconcile(
     gateway: ZoteroGateway,
     user_id: int,
     state: _CollectionState,
+    state_path: Path,
 ) -> Collection:
     matches = _matching_root_collections(gateway.list_collections(user_id), state.name)
     if len(matches) > 1:
         raise CollectionError(detail="Collection name is ambiguous at the library root.")
     if matches:
         return matches[0]
+    if state.submitted is not False:
+        raise RunStateError(
+            detail="Collection creation outcome unknown; reconcile this run before retry."
+        )
     try:
+        write_model(state_path, state.model_copy(update={"submitted": True}))
         return gateway.create_collection(user_id, state.name, state.write_token)
     except ZoteroApiError as error:
         if error.status_code != 0:
@@ -105,6 +113,6 @@ def resolve_collection_key(
         if state.key not in {collection.key for collection in collections}:
             raise CollectionError(detail="The created collection no longer exists.")
         return state.key
-    created = _create_or_reconcile(gateway, target.user_id, state)
-    write_model(state_path, state.model_copy(update={"key": created.key}))
+    created = _create_or_reconcile(gateway, target.user_id, state, state_path)
+    write_model(state_path, state.model_copy(update={"key": created.key, "submitted": True}))
     return created.key

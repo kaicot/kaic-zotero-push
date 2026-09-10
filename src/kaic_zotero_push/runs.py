@@ -8,6 +8,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from kaic_zotero_push.destinations import describe_target
 from kaic_zotero_push.errors import RunStateError
 from kaic_zotero_push.models import Decision, JsonValue, Manifest
 
@@ -57,9 +58,7 @@ def render_preview(manifest: Manifest) -> str:
     counts = dict.fromkeys(Decision, 0)
     for record in manifest.records:
         counts[record.decision] += 1
-    target = manifest.target.collection_name or "라이브러리 루트"
-    if manifest.target.create_collection:
-        target = f"{target} (새 컬렉션 생성 예정)"
+    target = describe_target(manifest.target)
     lines = [
         "# Zotero 등록 미리보기",
         "",
@@ -69,17 +68,40 @@ def render_preview(manifest: Manifest) -> str:
         f"- 기존 중복: {counts[Decision.DUPLICATE_SKIPPED]}건",
         f"- 검토 필요: {counts[Decision.NEEDS_REVIEW]}건",
         f"- 파싱 실패: {counts[Decision.PARSE_FAILED]}건",
-        f"- 대상: 개인 라이브러리 / {target}",
+        f"- 대상: {target}",
         "",
-        "## 등록 예정 예시",
+        "## 전체 참고문헌 상세",
+        "",
+        "번호는 추출 순번(source_index)입니다. 원문 인용 번호와 다를 수 있습니다.",
+        "자동 경고 없음은 서지 정확성 검증 완료를 뜻하지 않습니다.",
     ]
-    for record in [item for item in manifest.records if item.decision is Decision.CREATE][:10]:
+    for record in manifest.records:
         identifier = f"DOI {record.parsed.doi}" if record.parsed.doi else "DOI 없음"
         description = f"{record.parsed.title} ({record.parsed.date or '연도 미상'}) / {identifier}"
-        lines.append(f"{record.source.source_index}. [{record.parsed.item_type}] {description}")
-    review_records = [item for item in manifest.records if item.decision is Decision.NEEDS_REVIEW][
-        :10
-    ]
+        lines.extend(
+            [
+                "",
+                f"### 추출 순번 {record.source.source_index}: {record.decision.value}",
+                f"[{record.parsed.item_type}] {description}",
+                f"- 원문 위치: {record.source.source_locator}",
+                f"- 원문: {record.source.raw_text}",
+                "- 추출 필드:",
+                "```json",
+                record.parsed.model_dump_json(indent=2, exclude_none=True),
+                "```",
+                f"- 경고: {', '.join(record.quality.warnings) or '없음 (자동 검사 기준)'}",
+            ]
+        )
+        if record.duplicate.status != "none":
+            lines.append(
+                "".join(
+                    (
+                        f"- 중복 비교: source:{record.source.source_index} ↔ ",
+                        f"{record.duplicate.matched_item_key}; 근거: {record.duplicate.reason}",
+                    )
+                )
+            )
+    review_records = [item for item in manifest.records if item.decision is Decision.NEEDS_REVIEW]
     if review_records:
         lines.extend(["", "## 검토 필요 항목"])
         for record in review_records:

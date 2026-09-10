@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from kaic_zotero_push.dedup import classify_duplicates
+from kaic_zotero_push.destinations import collection_path, resolve_collection
 from kaic_zotero_push.errors import CollectionError, RunStateError, ZoteroApiError
 from kaic_zotero_push.extractors import extract_document
 from kaic_zotero_push.models import Manifest, TargetLibrary
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from kaic_zotero_push.zotero.gateway import ZoteroGateway
-    from kaic_zotero_push.zotero.models import Collection
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +33,29 @@ class PreviewRequest:
     runs_dir: Path
     offline: bool
     collection_name: str | None = None
+    collection_key: str | None = None
+    library_root: bool = False
+    proposed_collection: bool = False
+
+    def validate_destination(self) -> None:
+        """Reject missing or conflicting destinations before credentials or I/O."""
+        for value in (self.collection_name, self.collection_key):
+            if value is not None and not value.strip():
+                raise CollectionError(detail="Collection name/key cannot be blank.")
+        count = sum(
+            (self.collection_name is not None, self.collection_key is not None, self.library_root)
+        )
+        if self.offline:
+            if count or self.proposed_collection:
+                raise CollectionError(
+                    detail="--offline does not bind a destination; omit destination options."
+                )
+        elif count != 1:
+            raise CollectionError(
+                detail="Choose one: --collection NAME, --collection-key KEY, or --library-root."
+            )
+        if self.proposed_collection and self.collection_name is None:
+            raise CollectionError(detail="--proposed-collection requires --collection NAME.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,23 +67,12 @@ class PreparedRun:
     preview: str
 
 
-def _resolve_collection(name: str | None, collections: list[Collection]) -> Collection | None:
-    if name is None:
-        return None
-    matches = [collection for collection in collections if collection.name == name]
-    if len(matches) == 1:
-        return matches[0]
-    if not matches:
-        return None
-    keys = ", ".join(collection.key for collection in matches)
-    raise CollectionError(detail=f"Collection name is ambiguous; choose a key: {keys}")
-
-
 def prepare_run(
     request: PreviewRequest,
     gateway: ZoteroGateway | None = None,
 ) -> PreparedRun:
     """Extract, parse, deduplicate, and persist a no-write preview."""
+    request.validate_destination()
     extracted = extract_document(request.input_path)
     records = [
         parse_candidate(
@@ -84,15 +96,19 @@ def prepare_run(
                 status_code=403,
                 detail="Personal library write access is required.",
             )
-        collection = _resolve_collection(
+        collections = gateway.list_collections(access.user_id)
+        collection = resolve_collection(
             request.collection_name,
-            gateway.list_collections(access.user_id),
+            request.collection_key,
+            collections,
         )
         target = TargetLibrary(
             user_id=access.user_id,
             collection_key=collection.key if collection else None,
             collection_name=collection.name if collection else request.collection_name,
             create_collection=collection is None and request.collection_name is not None,
+            collection_path=collection_path(collection, collections) if collection else None,
+            proposed_collection=True if request.proposed_collection else None,
         )
         records = classify_duplicates(
             records,

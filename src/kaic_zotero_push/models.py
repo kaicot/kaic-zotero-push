@@ -183,6 +183,8 @@ class TargetLibrary(StrictModel):
     collection_key: str | None = None
     collection_name: str | None = None
     create_collection: bool = False
+    collection_path: str | None = None
+    proposed_collection: bool | None = None
 
     @model_validator(mode="after")
     def validate_collection_intent(self) -> Self:
@@ -199,7 +201,7 @@ class Manifest(StrictModel):
     """Immutable import plan."""
 
     schema_version: str = "manifest-v1"
-    parser_version: str = "0.2.3"
+    parser_version: str = "0.2.4"
     input_path: str
     input_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     target: TargetLibrary
@@ -216,7 +218,7 @@ class Manifest(StrictModel):
     ) -> Self:
         """Build a manifest from one immutable preview plan."""
         return cls(
-            input_path=str(input_path),
+            input_path=str(input_path.resolve()),
             input_sha256=input_sha256,
             target=target,
             records=records,
@@ -277,6 +279,7 @@ class ItemOutcome(StrictModel):
     status: OutcomeStatus
     zotero_key: str | None = None
     detail: str | None = None
+    retryable: bool | None = None
 
 
 class Receipt(StrictModel):
@@ -285,3 +288,5 @@ class Receipt(StrictModel):
     schema_version: str = "receipt-v1"
     manifest_sha256: str
     outcomes: list[ItemOutcome]
+    collection_key: str | None = None
+    destination: str | None = None

@@ -21,10 +21,20 @@
 
 ## Approval boundary
 
-The approval hash binds the exact input bytes, manifest, personal user ID, and existing collection
-key or exact missing-collection creation name. Any change invalidates approval. A missing
-collection is created only after approval, and its resolved key is kept in a separate durable
-state file. Do not manually edit run artifacts to bypass this check.
+The approval hash binds the exact input bytes, manifest, personal user ID, and destination:
+an existing collection key, explicit library root, or exact missing-collection creation intent.
+`approve` and `commit` each recompute the original input SHA-256 and compare it with the
+manifest's `input_sha256`. A missing or changed original file, manifest, user, or destination
+invalidates approval and requires a new preview and concrete user approval. A missing collection
+is created only after approval, and its resolved key is kept in a separate durable state file.
+Do not manually edit run artifacts to bypass these checks.
+
+One concrete user approval covers the displayed plan's `approve`, `commit`, and read-back
+verification. It does not authorize a changed plan. Offline previews have no verified user or
+remote duplicate state and cannot be approved or committed.
+
+If a write response is lost or otherwise leaves creation uncertain, retain and reconcile the same
+run's durable token and state. Do not create a new run for a blind re-import.
 
 ## Incident handling
 

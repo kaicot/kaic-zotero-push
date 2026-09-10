@@ -7,11 +7,14 @@ description: Extract references from local or uploaded DOCX, XLSX, CSV, Markdown
 
 Safely import bibliographic references into a user's Zotero **personal library**.
 
+Follow the user's explicit instructions and existing authorization; skill guidance does not
+override them. Keep the exact approved document and destination in scope across turns.
+
 ## Non-negotiable rules
 
 1. Preview before every write. A request to "add", "import", or "do it now" does not bypass the preview.
 2. After showing the preview, stop and obtain explicit user approval before running `approve` or `commit`.
-3. Create new metadata-only items only. Never update, merge, or delete existing items.
+3. This CLI creates new metadata-only items only; it has no update, merge, or delete feature.
 4. Never upload source documents, PDFs, or attachments.
 5. Never write to group libraries.
 6. Never invent missing metadata. Quarantine low-confidence records and possible duplicates.
@@ -33,7 +36,7 @@ Accept:
 - text-based `.pdf`
 
 Reject encrypted, damaged, unsupported, or non-text-extractable inputs. Scanned PDFs, images,
-`.hwp`, `.hwpx`, and OCR are outside v0.2.3.
+`.hwp`, `.hwpx`, and OCR are outside v0.2.4.
 
 ## Setup
 
@@ -55,8 +58,9 @@ read/write access and no file or group permissions.
 For a normal Zotero-connected preview:
 
 ```powershell
-uv run kaic-zotero-push preview "D:\path\references.docx"
 uv run kaic-zotero-push preview "D:\path\references.docx" --collection "작업치료 연구"
+uv run kaic-zotero-push preview "D:\path\references.docx" --collection-key "ABCD1234"
+uv run kaic-zotero-push preview "D:\path\references.docx" --library-root
 ```
 
 For local parsing without credentials or remote duplicate lookup:
@@ -68,6 +72,19 @@ uv run kaic-zotero-push preview "D:\path\references.txt" --offline
 Use `--offline` only for check-only requests. An offline run cannot be approved for writing
 because it is not bound to a verified Zotero user or remote duplicate state.
 
+For an online preview, require exactly one destination: `--collection NAME`,
+`--collection-key KEY`, or `--library-root`. Do not run an online preview without one, and do
+not combine destination options. `--offline` accepts no destination option and cannot proceed
+to `approve` or `commit`.
+
+For a natural-language registration request without a destination, derive a proposed collection
+name from the input filename stem, tell the user it is a proposal, and create the no-write
+preview with the exact command shape below. The proposal is not an approved destination.
+
+```powershell
+uv run kaic-zotero-push preview "D:\path\sample.docx" --collection "sample" --proposed-collection
+```
+
 ### 2. Present the preview
 
 Read the generated `preview.md` and report:
@@ -78,13 +95,16 @@ Read the generated `preview.md` and report:
 - exact duplicates;
 - review-needed records;
 - parse failures;
-- personal-library collection or root;
-- representative planned items;
+- exact destination: existing collection name and key, explicit library root, or proposed/new
+  collection name;
+- whether the destination is an existing collection or a new collection that will be created;
+- every planned, duplicate-skipped, review-needed, and parse-failed reference with its source
+  number and applicable reason or warning code;
 - missing metadata warning codes;
-- whether the exact named collection will be created after approval;
 - run directory.
 
-Say explicitly that Zotero has not been changed.
+Say explicitly that Zotero has not been changed and that the preview is a parsing and
+destination plan, not verified-bibliography confirmation.
 
 For "preview", "dry run", "check only", or equivalent requests, stop here without asking for
 approval.
@@ -104,8 +124,11 @@ After the user approves the displayed preview, and only then:
 uv run kaic-zotero-push approve ".runs\<run-id>"
 ```
 
-If the input, manifest, user, or collection changes, show a new preview and request approval
-again. Never edit `manifest.json` or `approval.json`.
+One concrete approval of the displayed plan authorizes `approve`, `commit`, and read-back; do
+not ask again between those steps. `approve` and `commit` each compare the current original-file
+SHA-256 with `manifest.json`'s `input_sha256`. If the input is missing or changed, or if the
+manifest, user, or destination changed, show a new preview and obtain new approval. Never edit
+`manifest.json` or `approval.json`.
 
 ### 4. Commit and verify
 
@@ -120,7 +143,8 @@ item keys for verification. If the preview bound an exact missing collection nam
 creates that root collection only after approval, persists its returned key, and then uses the
 same key for every item and read-back check.
 
-Report receipt states exactly:
+Report the resolved collection name and key (including a newly created collection), receipt path,
+and these receipt states exactly:
 
 - `created_verified`
 - `created_unverified`
@@ -140,14 +164,22 @@ For a partial run:
 uv run kaic-zotero-push resume ".runs\<run-id>"
 ```
 
-Resume preserves verified outcomes, rechecks known unverified keys, refreshes remote duplicates,
-and retries only eligible failures. Never delete successful items to simulate rollback.
+Resume the same run directory. It preserves verified outcomes, rechecks known unverified keys,
+refreshes remote duplicates, and retries only eligible failures. If a response left creation
+unknown, reconcile that run's stored token and remote state; never start a blind new import or
+create a new run to retry an unknown outcome. Never delete successful items to simulate rollback.
+
+Completed receipts are returned without rewriting history. Unfinished legacy batch records
+without source mappings require reconciliation before writing; report that concrete limitation.
 
 ## Collection handling
 
 - Resolve an exact unique collection name.
 - If a name is ambiguous, report the candidate keys and ask the user to choose.
-- If no collection is given, use the personal-library root.
+- `--library-root` is an intentional opt-in for the personal-library root; never treat an omitted
+  destination as root.
+- `--collection-key` selects that exact existing collection key. `--collection` resolves an exact
+  unique name; do not select the first same-named collection.
 - If the exact name is missing, show `새 컬렉션 생성 예정` in the preview.
 - Create a missing root collection only after the user approves that exact preview.
 - Persist and reuse the created collection key during resume; never create it twice.
@@ -178,9 +210,14 @@ and retries only eligible failures. Never delete successful items to simulate ro
   `Valuation Study`, `보고서`, and `지침` as report evidence only when author, title,
   publisher, and year can be separated from the source.
 - Preserve report publisher, place, and URL or DOI only when they occur in the input.
+- If review reveals an incorrect parsed field despite zero automatic warnings, explain the
+  mismatch and do not commit that plan. Prepare a corrected source-derived input and a new
+  preview; never patch the approved manifest or claim the parser verified the bibliography.
 
 ## Scope limits
 
-Decline requests to update, merge, or delete existing Zotero items; upload files; use group
-libraries; OCR scans; or process HWP/HWPX. Explain that these are outside v0.2.3 and do not attempt
-an improvised workaround.
+The Python CLI has no update, merge, or delete feature; it also does not upload files, write to
+group libraries, perform OCR, or process HWP/HWPX. State this as a tool limitation, not a
+prohibition on the user. If the user explicitly authorizes cleanup, preserve that request as a
+separate, scoped task that first identifies targets (for example, from receipt item keys); do not
+silently omit it or claim this CLI will perform it.

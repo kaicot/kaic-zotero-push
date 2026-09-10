@@ -62,11 +62,13 @@ Institutional or inseparable names use Zotero's single `name` field.
 
 ## Duplicate scope and order
 
-Remote duplicate matching is scoped to the requested destination. An existing item in another
-collection does not block creation for the current collection. When no collection is requested,
-only root items with an empty collection list are in scope. A newly requested collection has no
-remote items in scope during preview. Repeated references in the same input are always
-`needs_review`, even when a matching remote item also exists.
+Remote duplicate matching is scoped to the explicit requested destination. An existing item in
+another collection does not block creation for the current collection. The personal-library root
+is in scope only when the user explicitly selects `--library-root`; an omitted destination is not
+a root fallback. A newly requested collection has no remote items in scope during preview.
+Repeated references in the same input are always `needs_review`, even when a matching remote item
+also exists. Show both compared source numbers and the reason; if source citation numbers are not
+available, label them as extraction-order numbers.
 
 1. Exact normalized DOI.
 2. Exact PMID or ISBN.
@@ -75,3 +77,6 @@ remote items in scope during preview. Repeated references in the same input are 
 5. Title-only similarity or conflicting core fields becomes `needs_review`.
 
 Exact duplicates are skipped. Possible duplicates are never automatically created.
+
+During commit rechecking, preserve confirmed matches as `duplicate_skipped` and uncertain matches
+as `needs_review`; do not recast review-needed records as confirmed duplicates.

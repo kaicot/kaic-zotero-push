@@ -137,20 +137,32 @@ class ZoteroClient:
 
     def list_collections(self, user_id: int) -> list[Collection]:
         """List personal-library collections."""
-        response = self._read_client.get(
-            f"/users/{user_id}/collections",
-            params={"limit": _PAGE_SIZE},
-        )
-        self._check(response)
-        envelopes = TypeAdapter(list[CollectionEnvelope]).validate_json(response.content)
-        return [
-            Collection(
-                key=envelope.key,
-                name=envelope.data.name,
-                parent_key=self._parent_key(envelope.data.parent_collection),
+        collections: list[Collection] = []
+        start = 0
+        seen: set[str] = set()
+        while True:
+            response = self._read_client.get(
+                f"/users/{user_id}/collections",
+                params={"limit": _PAGE_SIZE, "start": start},
             )
-            for envelope in envelopes
-        ]
+            self._check(response)
+            envelopes = TypeAdapter(list[CollectionEnvelope]).validate_json(response.content)
+            for envelope in envelopes:
+                if envelope.key in seen:
+                    raise ZoteroApiError(
+                        status_code=0, detail="Collection listing changed; retry preview."
+                    )
+                seen.add(envelope.key)
+                collections.append(
+                    Collection(
+                        key=envelope.key,
+                        name=envelope.data.name,
+                        parent_key=self._parent_key(envelope.data.parent_collection),
+                    )
+                )
+            if len(envelopes) < _PAGE_SIZE:
+                return collections
+            start += len(envelopes)
 
     def create_collection(
         self,
