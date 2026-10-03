@@ -1,6 +1,6 @@
 # kaic-zotero-push
 
-현재 버전: **0.2.4**
+현재 버전: **0.2.5**
 
 문서의 참고문헌을 로컬에서 추출·정규화하고 Zotero 기존 항목과 중복을 확인한 뒤,
 사용자가 미리보기를 명시적으로 승인한 경우에만 **Zotero 개인 라이브러리**에 신규
@@ -84,6 +84,11 @@ API 키를 입력하거나 붙여넣는 동안에는 보안을 위해 글자나 
 명령은 먼저 `GET /keys/current`로 계정과 권한을 확인한 뒤 Windows Credential
 Manager에 저장합니다. 키 자체는 출력하지 않으며 명령줄 인자로도 받지 않습니다.
 
+이미 정상 설정되어 있으면 일반 미리보기·등록·재개 때 `configure`를 반복하지 않습니다.
+초기 설정과 키 누락·무효·교체·권한 문제에만 사용하며, 오프라인 미리보기에는 키가 필요하지
+않습니다. 에이전트의 설정 절차는
+[`references/security-policy.md`](references/security-policy.md)에 있습니다.
+
 ## 에이전트 자연어 사용법
 
 파일을 첨부하거나 로컬 경로를 알려주고 다음처럼 요청합니다.
@@ -98,6 +103,22 @@ Manager에 저장합니다. 키 자체는 출력하지 않으며 명령줄 인�
 미리보기를 한 번 구체적으로 승인한 뒤에만 승인 기록·등록·재조회 확인을 순서대로
 수행합니다. 목적지를 말하지 않은 등록 요청에는 파일명 줄기에서 컬렉션 후보를 제안하고,
 그 제안과 정확한 목적지를 포함한 미리보기를 먼저 제시합니다.
+
+요청별 처리 범위는 다음과 같습니다.
+
+- **확인만**: 미리보기 후 멈추며 등록 승인을 요구하지 않습니다. 로컬 파싱만 확인할 때는
+  `--offline`, Zotero 기존 항목과 중복을 확인할 때는 목적지를 지정한 온라인 미리보기를
+  사용합니다. 둘 다 Zotero를 변경하지 않습니다.
+- **등록**: 전체 미리보기 제시 후 구체적인 승인을 기다립니다. 같은 계획에 한 번 승인하면
+  승인 기록·등록·재조회까지 이어서 수행하며 단계 사이에 재승인을 요구하지 않습니다.
+- **재개**: 이전에 승인한 동일 실행 폴더를 사용합니다. 어떤 실행인지 불명확하면 확인하고,
+  새 실행으로 성공·결과 불명 항목을 무작정 재등록하지 않습니다.
+
+`SKILL.md`에는 핵심 안전 규칙과 작업 분기를 유지하고, 상세 명령·목적지 선택·전체 미리보기
+보고·재개 절차는 [`references/workflow.md`](references/workflow.md)에 모았습니다.
+DOCX 경계와 파싱 검토에는 서지 매핑 문서를, API 오류 진단에는 API 계약 문서를 읽습니다.
+매번 모든 참조 문서를 읽을 필요는 없습니다. v0.2.5는 지침 정리이며 등록 엔진과 승인·중복·
+재개 정책은 v0.2.4와 같습니다.
 
 ## CLI 사용법
 
@@ -241,7 +262,7 @@ HTTP 헤더는 저장하지 않습니다.
 Zotero 항목과 컬렉션 배치를 다시 조회합니다. commit 직전 재검사에서 확정 중복은
 `duplicate_skipped`, 불확실 항목은 `needs_review`로 구분해 보존합니다.
 
-## v0.2.4 제한
+## v0.2.5 제한
 
 - `.hwp`, `.hwpx`, 스캔 PDF, 이미지 OCR 미지원
 - 그룹 라이브러리 쓰기 미지원
@@ -255,10 +276,10 @@ Zotero 항목과 컬렉션 배치를 다시 조회합니다. commit 직전 재�
 ## 개발과 검증
 
 ```powershell
-uv sync --dev
+uv sync --dev --locked
 uv run ruff format --check .
 uv run ruff check .
-uv run basedpyright
+uv run basedpyright --pythonpath ".venv/Scripts/python.exe"
 uv build
 ```
 
@@ -266,15 +287,43 @@ uv build
 관리하며 GitHub 저장소와 배포 패키지에는 포함하지 않습니다. 로컬 검증 checkout에
 테스트가 있는 경우 `uv run pytest`로 전체 회귀 검사를 실행합니다.
 
+별도 검증 환경을 사용하면 basedpyright의 `--pythonpath`도 해당 환경의 실제 Python
+경로로 지정합니다. 자동 회귀 검사는 실제 네트워크와 자격 증명 접근을 차단한 상태에서
+수행하고, 모의 API 검증과 실제 Zotero 통합 검증을 구분해서 보고합니다.
+
 실제 Zotero 통합 검증은 별도 테스트 컬렉션과 전용 API 키를 사용하세요. 테스트가 만든
 항목의 자동 삭제는 제공하지 않으며, 일반 실행은 Zotero 삭제 API를 호출하지 않습니다.
 사용자가 정리·삭제를 명시적으로 요청하면 그 요청은 금지된 것으로 치부하지 않고, 영수증의
 항목 key 등을 바탕으로 대상을 확인하는 별도 범위 작업으로 다룹니다. 이 CLI 기능으로
 수정·삭제를 수행한다고 약속하지는 않습니다.
 
+## 버전 관리와 배포
+
+이 저장소는 `MAJOR.MINOR.PATCH` 형식의 Semantic Versioning 정책으로 관리합니다.
+
+- **PATCH**: 기존 기능 계약을 유지하는 오류 수정·지침 및 문서 정리.
+- **MINOR**: 기존 사용 방식과 호환되는 기능 추가.
+- **MAJOR**: 기존 공개 사용 계약과 호환되지 않는 변경.
+
+현재는 초기 개발 단계인 `0.x`입니다. 호환성 변경은 변경 이력에 명시하고 버전 증가
+범위를 별도로 판단합니다. 이번 `0.2.4 → 0.2.5`는 등록 엔진과 CLI 계약을 유지한
+지침 정리이므로 PATCH 업데이트입니다.
+
+배포 버전은 `VERSION`, `pyproject.toml`, Python `__version__`, `uv.lock`의 프로젝트
+항목, README 현재 버전, CHANGELOG의 버전·날짜에 일치시킵니다. 프로젝트 버전 갱신만을
+이유로 의존성을 업그레이드하지 않습니다.
+
+검증을 마친 변경은 커밋하고 그 커밋에 annotated `vX.Y.Z` 태그를 붙여 브랜치와 함께
+push합니다. 이미 공개한 태그를 이동하거나 덮어쓰지 않으며, 원격 브랜치·태그가 같은
+커밋을 가리키는지 확인합니다. GitHub Release 생성이나 패키지 인덱스 배포는 별도 요청이
+있을 때 수행합니다. 개발·검증·동기화 규칙은 [`AGENTS.md`](AGENTS.md)에 있습니다.
+
 ## 문서
 
 - 에이전트 실행 계약: [`SKILL.md`](SKILL.md)
+- 저장소 개발·검증·배포 규칙: [`AGENTS.md`](AGENTS.md)
+- 상세 실행·목적지·미리보기·재개 절차:
+  [`references/workflow.md`](references/workflow.md)
 - 보안 정책: [`references/security-policy.md`](references/security-policy.md)
 - Zotero API 계약:
   [`references/zotero-api-contract.md`](references/zotero-api-contract.md)

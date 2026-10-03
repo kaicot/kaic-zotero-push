@@ -17,6 +17,17 @@ The parser is conservative. The default is `journalArticle`; explicit structured
 unambiguous source markers may select another supported type. Ambiguous records must be reviewed,
 not guessed.
 
+## DOCX reference-section boundaries
+
+- Begin only at a standalone `References`, `Bibliography`, or `참고문헌` heading.
+- Stop immediately at normal-style headings or text markers for `Table S1/S2`, numbered tables,
+  `Supplementary`, `Supplementary Table`, `Supporting Information`, `Appendix`, `Acknowledgments`,
+  or `Figure`.
+- Exclude the terminator and every later caption, footnote, paragraph, and table. Preserve
+  unnumbered references up to that boundary; do not infer the boundary from numbering.
+- If no explicit end boundary is found, keep located candidates but mark the section unconfirmed
+  so its references remain `needs_review`, not automatically eligible through the document end.
+
 ## Parsing order and journal gate
 
 1. Structured CSV/XLSX fields.
@@ -36,8 +47,17 @@ the title. Failed gates are rendered as stable warning codes and remain `needs_r
 Report evidence includes `Indicator`, `Press Release`, `User Guide`, `Raw Data`,
 `Reference Materials`, `Valuation Study`, `보고서`, and `지침`. Institution-authored reports
 preserve the organization in Zotero's single `name` creator field. Clearly supplied personal
-authors remain personal creators. Title, date, publisher, place, and verified URL or DOI are
+authors remain personal creators. Title, date, publisher, place, and source-provided URL or DOI are
 mapped only when present in the source.
+
+Use report markers as evidence only when author, title, publisher, and year can be separated
+from the source. Preserve supplied journal abbreviations, initials, volume, issue, page ranges,
+and article numbers; do not expand or enrich them through external search. A source-provided
+URL or DOI is not a claim that it was externally validated.
+
+If review finds an incorrect field despite no automatic warnings, explain it and do not commit
+that plan. Prepare a corrected source-derived input and new preview; never patch an approved
+manifest or claim parsing verified the bibliography.
 
 ## Field mapping
 

@@ -1,5 +1,22 @@
 # Security policy
 
+## Initial setup and credential recovery
+
+From the skill's project directory, initialize the environment and configure credentials only
+when they are not already set up:
+
+```powershell
+uv sync
+uv run kaic-zotero-push configure
+```
+
+The configuration command prompts privately, verifies `/keys/current`, and stores the key in
+Windows Credential Manager. Use the existing working environment and credential configuration
+for ordinary previews, imports, and resume; do not rerun `configure` on every request. Recover
+credentials only when missing, invalid, rotated, or insufficiently permitted. Never ask the user
+to paste the key into chat or inspect the stored key to decide whether setup is needed.
+Offline previews need no Zotero credentials.
+
 ## Credentials
 
 - Store the Zotero API key only through `kaic-zotero-push configure`.

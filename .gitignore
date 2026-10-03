@@ -21,6 +21,7 @@ build/
 !/README.md
 !/SKILL.md
 !/CHANGELOG.md
+!/AGENTS.md
 
 # Local source documents and private working material.
 /*.docx
